@@ -18,7 +18,6 @@ let libp2pNode = null;
 let wireGuardVPN = null;
 let updatePeerListTimeoutId;
 
-
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 800,
