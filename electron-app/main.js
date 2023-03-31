@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const fs = require('fs');
-const { getExternalIP } = require('./ipUtils');
+const axios = require('axios');
 const {
   createLibp2pNode,
   createWireGuardVPN,
@@ -9,12 +9,15 @@ const {
   setupVPNPeers,
   getConnectedPeers,
   addWireGuardPeer,
-  announcePeer
+  announcePeer,
+  CUSTOM_DISCOVERY_TOPIC
 } = require('./backend');
 
 let mainWindow = null;
 let libp2pNode = null;
 let wireGuardVPN = null;
+let updatePeerListTimeoutId;
+
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -39,7 +42,10 @@ function getAllowedIPs(peerId) {
 }
 
 function updatePeerList(window, node) {
-  if (!node) return;
+  if (!node) {
+    window.webContents.send('updatePeerList', []);
+    return;
+  }
 
   const connectedPeers = getConnectedPeers(node);
   const filteredPeers = connectedPeers.filter((peer) => peer !== undefined);
@@ -50,7 +56,7 @@ function updatePeerList(window, node) {
 
   window.webContents.send('updatePeerList', peerList);
 
-  setTimeout(() => {
+  updatePeerListTimeoutId = setTimeout(() => {
     updatePeerList(window, node);
   }, 5000); // Update the peer list every 5 seconds
 }
@@ -72,6 +78,16 @@ app.on('activate', () => {
   }
 });
 
+async function getPublicIp() {
+  try {
+    const response = await axios.get('https://api.ipify.org?format=json');
+    return response.data.ip;
+  } catch (error) {
+    console.error('Error getting public IP:', error);
+    return null;
+  }
+}
+
 ipcMain.handle('toggleVPN', async (event, enabled) => {
   if (enabled) {
     libp2pNode = await createLibp2pNode();
@@ -80,7 +96,7 @@ ipcMain.handle('toggleVPN', async (event, enabled) => {
     await libp2pNode.start();
 
     // Subscribe to the pubsub topic
-    libp2pNode.pubsub.subscribe('your-topic', (message) => {
+    libp2pNode.pubsub.subscribe(CUSTOM_DISCOVERY_TOPIC, (message) => {
       console.log('Received message:', message);
     });
 
@@ -97,19 +113,24 @@ ipcMain.handle('toggleVPN', async (event, enabled) => {
 
     // Announce the peer with its NFT public key, WireGuard endpoint, and allowed IPs
     const nftPublicKey = 'your-nft-public-key'; // Get this value from the authentication module
-    const endpoint = `${await publicIp.v4()}:31820`; // Get your external IP and use your desired WireGuard port
+    const ip = await getPublicIp();
+    const endpoint = `${ip}:31820`; // Get your external IP and use your desired WireGuard port
     const allowedIPs = getAllowedIPs(libp2pNode.peerId.toB58String());
     announcePeer(libp2pNode, nftPublicKey, endpoint, allowedIPs);
 
     await wireGuardVPN.start();
     updatePeerList(mainWindow, libp2pNode);
   } else {
-    libp2pNode.pubsub.unsubscribe('your-topic');
+    await libp2pNode.pubsub.unsubscribe(CUSTOM_DISCOVERY_TOPIC);
     await libp2pNode.stop();
     await wireGuardVPN.stop();
 
+    clearTimeout(updatePeerListTimeoutId);
+
     libp2pNode = null;
     wireGuardVPN = null;
+
+    updatePeerList(mainWindow, null);
   }
 });
 

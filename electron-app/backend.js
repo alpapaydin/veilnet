@@ -1,4 +1,6 @@
 const Libp2p = require('libp2p');
+const Websockets = require('libp2p-websockets');
+const Bootstrap = require('libp2p-bootstrap');
 const TCP = require('libp2p-tcp');
 const { NOISE } = require('libp2p-noise');
 const MPLEX = require('libp2p-mplex');
@@ -6,26 +8,57 @@ const DHT = require('libp2p-kad-dht');
 const { exec } = require('child_process');
 const Gossipsub = require('libp2p-gossipsub');
 const CUSTOM_DISCOVERY_TOPIC = 'vpn-nft-discovery';
+const Circuit = require('libp2p-circuit');
+const PeerId = require('peer-id');
+
+const bootstrapList = [
+  '/ip4/<Server-1-IP>/tcp/<Server-1-Port>/p2p/<Server-1-PeerID>',
+  '/ip4/<Server-2-IP>/tcp/<Server-2-Port>/p2p/<Server-2-PeerID>',
+];
+
 
 async function createLibp2pNode() {
+  const peerId = await PeerId.create({ bits: 1024, keyType: 'RSA' });
+
   const node = await Libp2p.create({
+    peerId,
     addresses: {
-      listen: ['/ip4/0.0.0.0/tcp/0']
+      listen: [
+        '/ip4/0.0.0.0/tcp/0',
+        '/ip6/::/tcp/0',
+        '/ip4/0.0.0.0/tcp/0/ws', // Add this line
+        '/ip6/::/tcp/0/ws', // Add this line
+      ],
     },
     modules: {
-      transport: [TCP],
+      transport: [Websockets, TCP],
       connEncryption: [NOISE],
       streamMuxer: [MPLEX],
+      peerDiscovery: [Bootstrap],
       dht: DHT,
+      relay: Circuit,
       pubsub: Gossipsub,
     },
     config: {
+      peerDiscovery: {
+        bootstrap: {
+          enabled: true,
+          list: bootstrapList,
+        },
+      },
+      },
       dht: {
         enabled: true,
         randomWalk: {
           enabled: true
         }
       },
+      relay: {
+        enabled: true,
+        hop: {
+          enabled: true,
+          active: false,
+        },
       pubsub: {
         enabled: true,
         emitSelf: true
@@ -138,5 +171,6 @@ module.exports = {
   announcePeer,
   storeNFTInfo,
   findPeerByNFTPublicKey,
-  getConnectedPeers
+  getConnectedPeers,
+  CUSTOM_DISCOVERY_TOPIC
 };
