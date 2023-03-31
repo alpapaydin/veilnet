@@ -1,0 +1,9 @@
+{
+    "peerId1": {
+      "allowedIPs": "10.0.0.2/32"
+    },
+    "peerId2": {
+      "allowedIPs": "10.0.0.3/32"
+    }
+  }
+  
