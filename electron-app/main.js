@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const fs = require('fs');
+const path = require('path');
 const axios = require('axios');
 const {
   createLibp2pNode,
@@ -17,6 +18,7 @@ let mainWindow = null;
 let libp2pNode = null;
 let wireGuardVPN = null;
 let updatePeerListTimeoutId;
+let lastToggleTime = 0;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -88,10 +90,21 @@ async function getPublicIp() {
 }
 
 ipcMain.handle('toggleVPN', async (event, enabled) => {
-  if (enabled) {
-    libp2pNode = await createLibp2pNode();
-    wireGuardVPN = await createWireGuardVPN('wireguard/config.conf');
+  const currentTime = Date.now();
+  const debounceDelay = 2000; // 2 seconds
+  if (currentTime - lastToggleTime < debounceDelay) {
+    console.log('Toggle action ignored due to debounce delay');
+    return;
+  }
 
+  lastToggleTime = currentTime;
+  
+  if (enabled) {
+    const wireGuardPath = 'C:\\Program Files\\WireGuard';
+    const configPath = path.join(wireGuardPath, 'config.conf');
+
+    libp2pNode = await createLibp2pNode();
+    wireGuardVPN = await createWireGuardVPN(configPath);
     await libp2pNode.start();
 
     // Subscribe to the pubsub topic

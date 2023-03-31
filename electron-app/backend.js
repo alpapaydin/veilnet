@@ -10,6 +10,7 @@ const Gossipsub = require('libp2p-gossipsub');
 const CUSTOM_DISCOVERY_TOPIC = 'vpn-nft-discovery';
 const Circuit = require('libp2p-circuit');
 const PeerId = require('peer-id');
+const { startWireGuardVPN, stopWireGuardVPN } = require('./wireguard/wireguard');
 
 const bootstrapList = [
   '/ip4/<Server-1-IP>/tcp/<Server-1-Port>/p2p/<Server-1-PeerID>',
@@ -126,28 +127,8 @@ function getConnectedPeers(node) {
 async function createWireGuardVPN(configPath) {
   return {
     configPath,
-    async start() {
-      return new Promise((resolve, reject) => {
-        exec(`wg-quick up ${configPath}`, (error) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve();
-          }
-        });
-      });
-    },
-    async stop() {
-      return new Promise((resolve, reject) => {
-        exec(`wg-quick down ${configPath}`, (error) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve();
-          }
-        });
-      });
-    }
+    start: () => startWireGuardVPN(configPath),
+    stop: () => stopWireGuardVPN(configPath),
   };
 }
 

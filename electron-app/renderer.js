@@ -1,4 +1,5 @@
 const { ipcRenderer } = require('electron');
+let toggling = false;
 
 function authenticate() {
   // TODO: Call the necessary NFT authentication functions
@@ -15,8 +16,22 @@ function authenticate() {
 
 document.getElementById('authenticate').addEventListener('click', authenticate);
 
-document.getElementById('toggleVPN').addEventListener('change', (event) => {
-  ipcRenderer.invoke('toggleVPN', event.target.checked);
+const vpnToggle = document.getElementById('toggleVPN');
+vpnToggle.addEventListener('change', async (event) => {
+  if (toggling) {
+    event.preventDefault();
+    return;
+  }
+
+  toggling = true;
+  vpnToggle.disabled = true;
+  const enabled = vpnToggle.checked;
+  await ipcRenderer.invoke('toggleVPN', enabled);
+  
+  setTimeout(() => {
+    toggling = false;
+    vpnToggle.disabled = false;
+  }, 2000);
 });
 
 const peerListElement = document.getElementById('peer-list');
