@@ -125,10 +125,32 @@ function getConnectedPeers(node) {
 }
 
 async function createWireGuardVPN(configPath) {
+  const platformIndependentPath = path.join(configPath); // Add this line
+
   return {
-    configPath,
-    start: () => startWireGuardVPN(configPath),
-    stop: () => stopWireGuardVPN(configPath),
+    configPath: platformIndependentPath, // Update this line
+    async start() {
+      return new Promise((resolve, reject) => {
+        exec(`wg-quick up ${platformIndependentPath}`, (error) => { // Update this line
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        });
+      });
+    },
+    async stop() {
+      return new Promise((resolve, reject) => {
+        exec(`wg-quick down ${platformIndependentPath}`, (error) => { // Update this line
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        });
+      });
+    }
   };
 }
 
