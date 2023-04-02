@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const { updateWireGuardConfig } = require('./wireguard/configUpdater');
 const {
   createLibp2pNode,
   createWireGuardVPN,
@@ -100,8 +101,11 @@ ipcMain.handle('toggleVPN', async (event, enabled) => {
   lastToggleTime = currentTime;
   
   if (enabled) {
-    const wireGuardPath = 'C:\\Program Files\\WireGuard';
-    const configPath = path.join(wireGuardPath, 'config.conf');
+    const wireGuardPath = `${__dirname}/wireguard`;
+    const configPath = path.resolve(wireGuardPath, 'config.conf');
+
+    // Update the WireGuard config with the private and public keys
+    await updateWireGuardConfig(configPath);
 
     libp2pNode = await createLibp2pNode();
     wireGuardVPN = await createWireGuardVPN(configPath);
@@ -115,11 +119,11 @@ ipcMain.handle('toggleVPN', async (event, enabled) => {
     handlePeerDiscovery(libp2pNode, async (peerInfo) => {
       // Use custom logic to determine if the discovered peer should be added to the VPN
       // Example: Fetch the NFT ownership of the discovered peer and compare it to your requirements
-
+    
       const publicKey = peerInfo.publicKey; // Replace with the actual public key of the WireGuard peer
       const endpoint = peerInfo.endpoint; // Replace with the actual endpoint of the WireGuard peer (ip:port)
       const allowedIPs = peerInfo.allowedIPs; // Replace with the actual allowed IPs for the WireGuard peer (e.g., '10.0.0.2/32')
-      
+    
       await addWireGuardPeer(wireGuardVPN.configPath, publicKey, endpoint, allowedIPs);
     });
 
@@ -145,5 +149,6 @@ ipcMain.handle('toggleVPN', async (event, enabled) => {
     updatePeerList(mainWindow, null);
   }
 });
+
 
 module.exports.libp2pNode = () => libp2pNode;

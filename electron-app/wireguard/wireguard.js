@@ -10,8 +10,9 @@ async function startWireGuardVPN(configPath) {
       };
   
       if (isWin) {
+        
         const command = `start "" "C:\\Program Files\\WireGuard\\wireguard.exe" /installtunnelservice "${configPath}"`;
-  
+        console.log(command);
         sudoPrompt.exec(command, options, (error) => {
           if (error) {
             reject(error);

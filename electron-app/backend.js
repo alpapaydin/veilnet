@@ -13,9 +13,13 @@ const PeerId = require('peer-id');
 const { startWireGuardVPN, stopWireGuardVPN } = require('./wireguard/wireguard');
 
 const bootstrapList = [
-  '/ip4/<Server-1-IP>/tcp/<Server-1-Port>/p2p/<Server-1-PeerID>',
-  '/ip4/<Server-2-IP>/tcp/<Server-2-Port>/p2p/<Server-2-PeerID>',
+  '/dns4/bootstrap.libp2p.io/tcp/443/wss/p2p/QmbLHAnMoJPWSCR5Zhtx6BHJX9KiKNN6tpvbUcqanj75Nb',
+  '/dns4/bootstrap.libp2p.io/tcp/443/wss/p2p/QmNnooDu7bfjPFoTZYxMNLWUQJyrVwtbZg5gBMjTezGAJN',
+  '/dns4/bootstrap.libp2p.io/tcp/443/wss/p2p/QmcZf59bWwK5XFi76CZX8cbJ4BhTzzA3gU1ZjYZcYW3dwt',
+  '/dns4/bootstrap.libp2p.io/tcp/443/wss/p2p/QmQCU2EcMqAqQPR2i9bChDtGNJchTbq5TbXJJ16u19uLTa',
 ];
+
+const AUTH_TOKEN = "adana31";
 
 
 async function createLibp2pNode() {
@@ -95,28 +99,35 @@ async function handlePeerDiscovery(node, onPeerDiscovered) {
     const data = JSON.parse(msg.data.toString());
     const peerInfo = {
       id: msg.from,
+      authToken: data.authToken,
       nftPublicKey: data.nftPublicKey,
       endpoint: data.endpoint,
-      allowedIPs: data.allowedIPs
+      allowedIPs: data.allowedIPs,
     };
-
-    if (peerInfo.id) {
+  
+    // Check if the authToken matches the pre-shared token.
+    if (peerInfo.id && peerInfo.authToken === AUTH_TOKEN) {
       onPeerDiscovered(peerInfo);
+    } else {
+      console.log("Unauthorized peer connection attempt:", peerInfo.id);
     }
   });
+  
 
   await node.pubsub.subscribe(CUSTOM_DISCOVERY_TOPIC);
 }
 
 async function announcePeer(node, nftPublicKey, endpoint, allowedIPs) {
   const data = {
+    authToken: AUTH_TOKEN,
     nftPublicKey,
     endpoint,
-    allowedIPs
+    allowedIPs,
   };
 
   await node.pubsub.publish(CUSTOM_DISCOVERY_TOPIC, Buffer.from(JSON.stringify(data)));
 }
+
 
 function getConnectedPeers(node) {
   if (!node) return [];
@@ -133,6 +144,7 @@ async function createWireGuardVPN(configPath) {
 }
 
 async function addWireGuardPeer(configPath, publicKey, endpoint, allowedIPs) {
+  publicKey = publicKey.replace(/['"]+/g, ''); // Remove double quotes from the public key string
   return new Promise((resolve, reject) => {
     exec(`wg setconf ${configPath} peer ${publicKey} endpoint ${endpoint} allowed-ips ${allowedIPs}`, (error) => {
       if (error) {
