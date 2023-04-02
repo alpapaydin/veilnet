@@ -16,6 +16,20 @@ function authenticate() {
 
 document.getElementById('authenticate').addEventListener('click', authenticate);
 
+
+document.getElementById('minimize').addEventListener('click', () => {
+  ipcRenderer.send('minimize-window');
+});
+
+document.getElementById('maximize').addEventListener('click', () => {
+  ipcRenderer.send('maximize-window');
+});
+
+document.getElementById('close').addEventListener('click', () => {
+  ipcRenderer.send('close-window');
+});
+
+
 const vpnToggle = document.getElementById('toggleVPN');
 vpnToggle.addEventListener('change', async (event) => {
   if (toggling) {
