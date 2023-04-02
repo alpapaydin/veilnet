@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const { updateWireGuardConfig } = require('./wireguard/configUpdater');
+const { generateWireGuardKeys, updateWireGuardConfig } = require('./wireguard/configUpdater');
 const {
   createLibp2pNode,
   createWireGuardVPN,
@@ -105,7 +105,8 @@ ipcMain.handle('toggleVPN', async (event, enabled) => {
     const configPath = path.resolve(wireGuardPath, 'config.conf');
 
     // Update the WireGuard config with the private and public keys
-    await updateWireGuardConfig(configPath);
+    const keyPair = await generateWireGuardKeys();
+    await updateWireGuardConfig(configPath, keyPair);
 
     libp2pNode = await createLibp2pNode();
     wireGuardVPN = await createWireGuardVPN(configPath);
