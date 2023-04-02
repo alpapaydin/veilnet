@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const { ensureWireGuardInstallation } = require('./wireguard/installWireguard');
 const { generateWireGuardKeys, updateWireGuardConfig } = require('./wireguard/configUpdater');
 const {
   createLibp2pNode,
@@ -102,6 +103,7 @@ ipcMain.handle('toggleVPN', async (event, enabled) => {
   lastToggleTime = currentTime;
   
   if (enabled) {
+    await ensureWireGuardInstallation();
     const wireGuardPath = `${__dirname}/wireguard`;
     const configPath = path.resolve(wireGuardPath, 'config.conf');
 
